@@ -69,7 +69,14 @@ class Analyzer:
                 return Pathname(make_path_segments(node, self._base_dir))
 
     def _top_level_properties(self, node):
-        source = node.get('sources')[0]
+        sources = node.get('sources')
+        if sources is None:
+            sources = [dict(
+                fileName="",
+                line=1
+            )]
+        source = sources[0]
+
         if node.get('flags', {}).get('isExported', False):
             exported_from = self._containing_module(node)
         else:
@@ -194,7 +201,7 @@ class Analyzer:
             # many attr of Functions.
             sigs = node.get('signatures')
             first_sig = sigs[0]  # Should always have at least one
-            first_sig['sources'] = node['sources']
+            first_sig['sources'] = node.get('sources')
             return self._convert_node(first_sig)
         elif kind in ['Call signature', 'Constructor signature']:
             # This is the real meat of a function, method, or constructor.
@@ -228,7 +235,7 @@ class Analyzer:
         """
         types = []
         for type in node.get(kind, []):
-            if type['type'] == 'reference':
+            if type['type'] == 'reference' and 'id' in type:
                 pathname = Pathname(make_path_segments(self._index[type['id']],
                                                        self._base_dir))
                 types.append(pathname)
@@ -243,7 +250,7 @@ class Analyzer:
         """
         type_of_type = type.get('type')
 
-        if type_of_type == 'reference' and type.get('id'):
+        if type_of_type == 'reference' and type.get('id') and type['id'] in self._index:
             node = self._index[type['id']]
             name = node['name']
         elif type_of_type == 'unknown':
